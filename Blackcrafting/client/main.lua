@@ -1,48 +1,48 @@
--- 客户端脚本 client.lua
+-- client.lua
 
--- 初始化变量
+-- Initialize variables
 local benchObj = nil
 local benchHash = `gr_prop_gr_bench_02a`
 local currentXP = 0
 
--- 确保配置存在
+-- Ensure config exists
 if not Config then Config = {} end
 if not Config.Levels then
     Config.Levels = {
-        {0, "Novice"},      -- 等级0: 0-99 XP
-        {100, "Apprentice"},-- 等级1: 100-199 XP
-        {200, "Journeyman"},-- 等级2: 200-299 XP
-        {300, "Expert"},    -- 等级3: 300-399 XP
-        {400, "Master"}     -- 等级4: 400+ XP
+        {0, "Novice"},       -- Level 0: 0-99 XP
+        {100, "Apprentice"}, -- Level 1: 100-199 XP
+        {200, "Journeyman"}, -- Level 2: 200-299 XP
+        {300, "Expert"},     -- Level 3: 300-399 XP
+        {400, "Master"}      -- Level 4: 400+ XP
     }
 end
 
 -- ======================
--- 核心功能函数
+-- Core Functions
 -- ======================
 
--- 获取详细的等级信息
+-- Get detailed level info based on XP
 local function getLevelInfo(xp)
     local currentLevel = 0
     local nextLevelXP = Config.Levels[1][1] or 100
     local levelName = "Novice"
-    
-    -- 从最高级开始检查当前等级
+
+    -- Check from highest level down
     for i = #Config.Levels, 1, -1 do
         if xp >= Config.Levels[i][1] then
             currentLevel = i - 1
             levelName = Config.Levels[i][2] or ("Level "..(i-1))
-            
-            -- 计算下一级所需经验
+
+            -- Calculate XP needed for next level
             if Config.Levels[i+1] then
                 nextLevelXP = Config.Levels[i+1][1]
             else
-                nextLevelXP = Config.Levels[i][1] + 100 -- 默认增加100
+                nextLevelXP = Config.Levels[i][1] + 100
             end
             break
         end
     end
-    
+
     return {
         level = currentLevel,
         name = levelName,
@@ -52,30 +52,29 @@ local function getLevelInfo(xp)
     }
 end
 
-
--- 更新本地经验值
+-- Update local XP
 RegisterNetEvent('craftingxp:setXP', function(xp)
     currentXP = xp or 0
 end)
 
--- 创建工作台
+-- Create crafting bench
 Citizen.CreateThread(function()
     RequestModel(benchHash)
     while not HasModelLoaded(benchHash) do Wait(0) end
 
     benchObj = CreateObject(
-        benchHash, 
-        Config.bechnvec.x, 
-        Config.bechnvec.y, 
-        Config.bechnvec.z, 
+        benchHash,
+        Config.bechnvec.x,
+        Config.bechnvec.y,
+        Config.bechnvec.z,
         false, false, false
     )
     SetModelAsNoLongerNeeded(benchHash)
 
     if benchObj then
         SetEntityAsMissionEntity(benchObj, true, true)
-        
-        -- 添加交互选项
+
+        -- Add interaction option
         exports.ox_target:addLocalEntity(benchObj, {
             distance = 1.5,
             name = 'bench_open',
@@ -83,36 +82,36 @@ Citizen.CreateThread(function()
             label = 'Open Bench',
             onSelect = function()
                 TriggerServerEvent('craftingxp:getXP')
-                Wait(100) -- 确保经验值加载
+                Wait(100) -- Ensure XP is loaded
                 TriggerEvent('blackcrafting:client:OpenMenu')
             end
         })
     end
 end)
 
--- 打开制作菜单
+-- Open crafting menu
 RegisterNetEvent('blackcrafting:client:OpenMenu', function()
     local levelInfo = getLevelInfo(currentXP)
     local options = {}
-    
-    -- 1. 添加等级信息头
+
+    -- 1. Add level info header
     table.insert(options, {
         title = string.format('%s Level', levelInfo.name, levelInfo.level),
-        description = string.format('XP: %d/%d | Next level in: %d XP', 
+        description = string.format('XP: %d/%d | XP to next level: %d',
             levelInfo.currentXP, levelInfo.nextLevelXP, levelInfo.xpToNext),
         icon = 'fa-solid fa-medal',
         disabled = true
     })
 
-    -- 3. 添加可制作物品
+    -- 2. Add craftable items
     for itemId, itemData in pairs(Config.CraftableItems) do
         if currentXP >= itemData.requiredXP then
-            -- 生成材料文本
+            -- Generate materials text
             local materials = {}
             for _, mat in ipairs(itemData.recipe) do
                 materials[#materials + 1] = mat.itemname .. " x" .. mat.itemamont
             end
-    
+
             table.insert(options, {
                 title = itemData.menutitle,
                 description = string.format(
@@ -130,7 +129,7 @@ RegisterNetEvent('blackcrafting:client:OpenMenu', function()
         end
     end
 
-    -- 显示菜单
+    -- Show menu
     lib.registerContext({
         id = 'generalcrafting',
         title = 'Crafting Station',
@@ -139,12 +138,12 @@ RegisterNetEvent('blackcrafting:client:OpenMenu', function()
     lib.showContext('generalcrafting')
 end)
 
--- 物品制作逻辑
+-- Crafting logic
 RegisterNetEvent('blackcrafting:craftItem', function(data)
     local recipe = Config.CraftableItems[data.item]
     if not recipe then return end
 
-    -- 检查材料是否足够
+    -- Check for required materials
     local hasAllMaterials = true
     for _, material in ipairs(recipe.recipe) do
         if exports.ox_inventory:GetItemCount(material.itemname) < material.itemamont then
@@ -155,20 +154,20 @@ RegisterNetEvent('blackcrafting:craftItem', function(data)
 
     if not hasAllMaterials then
         return lib.notify({
-            title = 'Materials Missing',
-            description = 'You dont have enough materials!',
+            title = 'Missing Materials',
+            description = 'You do not have enough materials!',
             type = 'error',
             position = 'center-right'
         })
     end
 
-    -- 开始制作
+    -- Start crafting animation
     local ped = PlayerPedId()
     TaskStartScenarioInPlace(ped, "PROP_HUMAN_BUM_BIN", 0, true)
 
-    -- 技能检查小游戏
+    -- Skill check minigame
     local success = lib.skillCheck(
-        {'easy', 'easy', {areaSize = 100, speedMultiplier = 1}, 'hard'}, 
+        {'easy', 'easy', {areaSize = 100, speedMultiplier = 1}, 'hard'},
         {'w', 'a', 's', 'd'}
     )
 
@@ -182,7 +181,7 @@ RegisterNetEvent('blackcrafting:craftItem', function(data)
         })
     end
 
-    -- 制作进度条
+    -- Progress bar
     local completed = lib.progressBar({
         duration = 5000,
         label = "Crafting "..recipe.menutitle.."...",
@@ -195,18 +194,18 @@ RegisterNetEvent('blackcrafting:craftItem', function(data)
     ClearPedTasks(ped)
 
     if completed then
-        -- 扣除材料
+        -- Remove materials
         for _, material in ipairs(recipe.recipe) do
             TriggerServerEvent('blackcrafting:Takeitem', material.itemname, material.itemamont)
         end
-        
-        -- 给予成品和经验
+
+        -- Give item and XP
         TriggerServerEvent('blackcrafting:Giveitem', data.item, 1)
         TriggerServerEvent('craftingxp:addXP', recipe.rewardXP or 10)
-        
+
         lib.notify({
-            title = 'Success',
-            description = 'Crafted: '..recipe.menutitle,
+            title = 'Crafted Successfully',
+            description = 'You crafted: '..recipe.menutitle,
             type = 'success',
             position = 'center-right'
         })
@@ -215,7 +214,7 @@ RegisterNetEvent('blackcrafting:craftItem', function(data)
     ClearPedTasks(ped)
 end)
 
--- 资源停止时清理
+-- Cleanup when resource stops
 AddEventHandler('onResourceStop', function(resource)
     if GetCurrentResourceName() ~= resource then return end
     if DoesEntityExist(benchObj) then

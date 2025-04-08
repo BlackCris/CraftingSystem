@@ -1,24 +1,25 @@
 local QBCore = exports['qb-core']:GetCoreObject()
 
+-- 🧠 Retrieve XP for the player
 RegisterServerEvent('craftingxp:getXP', function()
     local src = source
     local identifier = GetPlayerIdentifier(src, 0) or "no_identifier"
     local steamName = GetPlayerName(src) or "Unknown Steam"
     local characterName = "Unknown RP"
 
-    -- ✅ 获取 RP 名（确保非空）
+    -- ✅ Get RP character name (ensure not empty)
     local Player = QBCore.Functions.GetPlayer(src)
     if Player and Player.PlayerData and Player.PlayerData.charinfo then
         characterName = Player.PlayerData.charinfo.firstname .. " " .. Player.PlayerData.charinfo.lastname
     end
 
-    -- ✅ 检查是否已存在记录
+    -- ✅ Check if XP record already exists
     exports.oxmysql:execute('SELECT xp FROM playercraftxp WHERE identifier = ?', {identifier}, function(result)
         if result and result[1] then
-            -- ✅ 已存在，返回经验给客户端
+            -- ✅ Record exists, send XP to client
             TriggerClientEvent('craftingxp:setXP', src, result[1].xp)
         else
-            -- ✅ 不存在，创建新记录
+            -- ✅ Record does not exist, create new entry
             exports.oxmysql:insert([[
                 INSERT INTO playercraftxp (identifier, steam_name, character_name, xp)
                 VALUES (?, ?, ?, ?)
@@ -29,6 +30,7 @@ RegisterServerEvent('craftingxp:getXP', function()
     end)
 end)
 
+-- ➕ Add XP to player
 RegisterServerEvent('craftingxp:addXP', function(amount)
     local src = source
     local identifier = GetPlayerIdentifier(src, 0)
@@ -37,7 +39,7 @@ RegisterServerEvent('craftingxp:addXP', function(amount)
     exports.oxmysql:update('UPDATE playercraftxp SET xp = xp + ? WHERE identifier = ?', {amount, identifier})
 end)
 
--- ✅ 物品给予
+-- 🎁 Give item to player
 RegisterServerEvent('blackcrafting:Giveitem', function(itemname, amount)
     local src = source
     local Player = QBCore.Functions.GetPlayer(src)
@@ -46,7 +48,7 @@ RegisterServerEvent('blackcrafting:Giveitem', function(itemname, amount)
     end
 end)
 
--- ✅ 物品扣除
+-- ❌ Remove item from player
 RegisterServerEvent('blackcrafting:Takeitem', function(itemname, amount)
     local src = source
     local Player = QBCore.Functions.GetPlayer(src)
