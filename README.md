@@ -17,6 +17,11 @@ This system encourages player progression and immersion through a level-based cr
 - 📦 Inventory Check – Ensures players have the required materials
 - ❌ Fail Conditions – Crafting fails if skill check is unsuccessful
 
+- ![ima1ge](https://github.com/user-attachments/assets/18edd45d-886d-4da4-ad17-d85f8f550235)
+- ![ima32ge](https://github.com/user-attachments/assets/8f53526b-ccd4-477d-a5c4-a5b79a7692e9)
+- ![image](https://github.com/user-attachments/assets/f2102693-affc-4ea8-abcf-ba6ebb41bfad)
+
+
 ---
 
 ## 📦 Requirements
